@@ -30,7 +30,7 @@ def enviar_correo(accion):
     msg['Subject'] = 'ALERTA DE DECISION DE TRADING'
     msg['From'] = smtp_username
     msg['To'] = "liranzaelias@gmail.com"
-    msg.set_content(f"La decisión de trading tomada a las {datetime.now().strftime("%A, %d de %B de %Y, %I:%M %p")} es: {accion}")
+    msg.set_content(f"La decisión de trading tomada a las {datetime.now().strftime('%A, %d de %B de %Y, %I:%M %p')} es: {accion}")
     with smtplib.SMTP(smtp_server, smtp_port) as server:
         server.starttls()
         server.login(smtp_username, smtp_password)
