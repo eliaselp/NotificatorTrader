@@ -35,6 +35,15 @@ def enviar_correo(accion):
         server.starttls()
         server.login(smtp_username, smtp_password)
         server.send_message(msg)
+    msg = EmailMessage()
+    msg['Subject'] = 'ALERTA DE DECISION DE TRADING'
+    msg['From'] = smtp_username
+    msg['To'] = "kliranza@gmail.com"
+    msg.set_content(f"La decisión de trading tomada a las {datetime.now().strftime("%A, %d de %B de %Y, %I:%M %p")} es: {accion}")
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_username, smtp_password)
+        server.send_message(msg)
 
 # Función para obtener el resumen de análisis técnico de TradingView
 def obtener_resumen_analisis():
