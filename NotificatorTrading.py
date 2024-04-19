@@ -65,7 +65,7 @@ def decidir_accion(resumen_analisis):
 
 # Función para imprimir el estado actual y la decisión de trading
 def imprimir_decision(accion):
-    print(f"Decisión de trading a las {datetime.now().strftime("%A, %d de %B de %Y, %I:%M %p")}: {accion}")
+    print(f"Decisión de trading a las {datetime.now().strftime('%A, %d de %B de %Y, %I:%M %p')}: {accion}")
     enviar_correo(accion)
 
 # Función principal que ejecuta el script
