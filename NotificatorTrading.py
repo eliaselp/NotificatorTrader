@@ -5,6 +5,7 @@ pip install tradingview_ta
 '''
 
 import time
+from datetime import datetime
 from tradingview_ta import TA_Handler, Interval, Exchange
 import smtplib
 from email.message import EmailMessage
@@ -29,7 +30,7 @@ def enviar_correo(accion):
     msg['Subject'] = 'ALERTA DE DECISION DE TRADING'
     msg['From'] = smtp_username
     msg['To'] = "liranzaelias@gmail.com"
-    msg.set_content(f"La decisión de trading tomada a las {time.datetime.now()} es: {accion}")
+    msg.set_content(f"La decisión de trading tomada a las {datetime.now()} es: {accion}")
     with smtplib.SMTP(smtp_server, smtp_port) as server:
         server.starttls()
         server.login(smtp_username, smtp_password)
@@ -55,7 +56,7 @@ def decidir_accion(resumen_analisis):
 
 # Función para imprimir el estado actual y la decisión de trading
 def imprimir_decision(accion):
-    print(f"Decisión de trading a las {time.datetime.now()}: {accion}")
+    print(f"Decisión de trading a las {datetime.now()}: {accion}")
     enviar_correo(accion)
 
 # Función principal que ejecuta el script
