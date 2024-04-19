@@ -79,10 +79,14 @@ def imprimir_decision(accion):
 # Función principal que ejecuta el script
 def main():
     while True:
-        resumen_analisis = obtener_resumen_analisis()
-        accion = decidir_accion(resumen_analisis)
-        imprimir_decision(accion)
-        time.sleep(1800)  # Espera 30 minutos antes de la próxima ejecución
+        try:
+            resumen_analisis = obtener_resumen_analisis()
+            accion = decidir_accion(resumen_analisis)
+            imprimir_decision(accion)
+            time.sleep(1800)  # Espera 30 minutos antes de la próxima ejecución
+        except Exception:
+            print("ERROR DE CONEXION")
+            time.sleep(1800)
 
 if __name__ == "__main__":
     main()
