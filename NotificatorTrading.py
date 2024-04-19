@@ -3,7 +3,6 @@ crear entorno virtual
 
 pip install tradingview_ta
 '''
-
 import time
 from datetime import datetime
 from tradingview_ta import TA_Handler, Interval, Exchange
@@ -41,11 +40,12 @@ def enviar_correo(accion, precio_actual):
             server.login(smtp_username, smtp_password)
             server.send_message(msg)
 
-# Función para obtener el precio actual de BTC/USDT
+# Función para obtener el precio actual de BTC/USDT usando la API de CoinGecko
 def obtener_precio_actual():
-    response = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT")
-    precio = response.json()['price']
-    return float(precio)
+    response = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usdt")
+    data = response.json()
+    precio = data['bitcoin']['usdt']
+    return precio
 
 # Función para obtener el resumen de análisis técnico de TradingView
 def obtener_resumen_analisis():
@@ -79,14 +79,10 @@ def imprimir_decision(accion):
 # Función principal que ejecuta el script
 def main():
     while True:
-        try:
-            resumen_analisis = obtener_resumen_analisis()
-            accion = decidir_accion(resumen_analisis)
-            imprimir_decision(accion)
-            time.sleep(1800)  # Espera 30 minutos antes de la próxima ejecución
-        except Exception:
-            print("ERROR DE CONEXION")
-            time.sleep(1800)
+        resumen_analisis = obtener_resumen_analisis()
+        accion = decidir_accion(resumen_analisis)
+        imprimir_decision(accion)
+        time.sleep(1800)  # Espera 30 minutos antes de la próxima ejecución
 
 if __name__ == "__main__":
     main()
