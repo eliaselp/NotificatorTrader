@@ -1,111 +1,104 @@
-'''
-crear entorno virtual
-
-pip install tradingview_ta
-pip install python-bingx
-'''
-
-import time
-import locale
-from datetime import datetime
+import pickle
+import os
 from tradingview_ta import TA_Handler, Interval, Exchange
-import smtplib
-from email.message import EmailMessage
-from bingX import BingX
-import requests
+import time
 
-locale.setlocale(locale.LC_TIME, 'es_ES')
+class SwingTradingBot:
+    def __init__(self, symbol, screener, exchange, interval):
+        self.handler = TA_Handler(
+            symbol=symbol,
+            screener=screener,
+            exchange=exchange,
+            interval=interval
+        )
+        self.last_operation = None
+        self.last_price = None
 
-# Configuración del manejador de TradingView TA para BTC/USDT
-ta_handler = TA_Handler(
-    symbol="BTCUSDT",
-    screener="crypto",
-    exchange="BINANCE",
-    interval=Interval.INTERVAL_30_MINUTES
-)
+    def get_current_price(self):
+        analysis = self.handler.get_analysis()
+        return analysis.indicators['close']
 
-# Configuración del servidor de correo electrónico
-smtp_server = "smtp.gmail.com"
-smtp_port = 587
-smtp_username = "tradingLiranza@gmail.com"
-smtp_password = "gkqnjoscanyjcver"
+    def get_analysis(self):
+        return self.handler.get_analysis()
 
-# Configuración del cliente de BingX
-api_key = "ZLNoOGKEAHwa0BAn8Q7pX5zgX1aZq8gZo3Sw3K7Sk4WsDNPM7rN9A9fugEa6PKWrnF6fiyN4ZwKFzwUByQ"
-secret_key = "Yu4GBSDEDT2gGBMvOD1LtwNsnYo3BamnXWhDFGC7PTEKoifLNNQvg6xpOpnTOImZGBTS5ZMzzQ9PecXMv2qojA"
-bingx_client = BingX(api_key=api_key, secret_key=secret_key)
-
-# Estado global de la última operación realizada
-estado_operacion = "MANTENER"  # Puede ser "COMPRAR", "VENDER" o "MANTENER"
-
-
-
-# Función para obtener el precio actual de BTC/USDT usando la API de BingX
-def obtener_precio_actual():
-    response = bingx_client.perpetual_v2.market.get_ticker("BTC-USDT")
-    precio = response["lastPrice"]
-    return precio
-
-
-# Función para enviar correo electrónico
-def enviar_correo(accion, precio_actual):
-    destinatarios = ["liranzaelias@gmail.com", "kliranza@.com"]  # Lista de destinatarios
-    msg = EmailMessage()
-    msg['Subject'] = 'ALERTA DE DECISION DE TRADING'
-    msg['From'] = smtp_username
-    msg['To'] = ", ".join(destinatarios)  # Unir todas las direcciones con comas
-    msg.set_content(f"La decisión de trading tomada a las {datetime.now().strftime('%I:%M %p del %A, %d de %B del %Y')} es: {accion}\nPrecio actual de BTC/USDT: {precio_actual}")
-    with smtplib.SMTP(smtp_server, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_username, smtp_password)
-        server.send_message(msg)
-
-# Función para obtener el resumen de análisis técnico de TradingView
-def obtener_resumen_analisis():
-    analysis = ta_handler.get_analysis()
-    return analysis.summary
-
-# Función para determinar la acción de trading
-def decidir_accion(resumen_analisis):
-    global estado_operacion
-    comprar = resumen_analisis['BUY']
-    neutrales = resumen_analisis['NEUTRAL']
-    vender = resumen_analisis['SELL']
-    
-    if comprar > vender and comprar > neutrales and estado_operacion != "COMPRAR":
-        estado_operacion = "COMPRAR"
-        return "COMPRAR"
-    elif vender > comprar and vender > neutrales and estado_operacion != "VENDER":
-        estado_operacion = "VENDER"
-        return "VENDER"
-    else:
-        return "MANTENER"
-
-# Función para imprimir el estado actual y la decisión de trading
-def imprimir_decision(accion):
-    precio_actual = obtener_precio_actual()
-    if accion in ["COMPRAR", "VENDER"]:
-        print(f"Decisión de trading a las {datetime.now().strftime('%I:%M %p del %A, %d de %B del %Y')}: {accion}")
-        print(f"Precio actual de BTC/USDT: {precio_actual}")
-        enviar_correo(accion, precio_actual)
-
-# Función principal que ejecuta el script
-def main():
-    while True:
-        try:
-            resumen_analisis = obtener_resumen_analisis()
-            accion = decidir_accion(resumen_analisis)
-            imprimir_decision(accion)
-        except requests.exceptions.RequestException as e:
-            print(f"Se ha producido un error de conexión: {e}")
-            print("Esperando 15 minutos antes de reintentar...")
-            time.sleep(900)  # Espera 15 minutos antes de reintentar
-        except Exception as e:
-            print(f"Se ha producido un error inesperado: {e}")
-            print("Esperando 15 minutos antes de reintentar...")
-            time.sleep(900)  # Espera 15 minutos antes de reintentar
+    def trade_decision(self, analysis):
+        current_price = self.get_current_price()
+        summary = analysis.summary
+        indicators = analysis.indicators
+        recommendation = summary['RECOMMENDATION']
+        
+        # Si hay una posición abierta, decidir si mantenerla o cerrarla
+        if self.last_operation:
+            if self.should_close_position(recommendation):
+                self.close_position(current_price)
+            else:
+                print(f"Manteniendo la posición {self.last_operation} a {current_price}.")
         else:
-            time.sleep(1800)  # Espera 30 minutos antes de la próxima ejecución
+            if recommendation == 'STRONG_BUY':
+                self.open_long_position(indicators, current_price)
+            elif recommendation == 'STRONG_SELL':
+                self.open_short_position(indicators, current_price)
+
+    def should_close_position(self, recommendation):
+        # Lógica para decidir si cerrar la posición
+        # Por ejemplo, cerrar en recomendaciones neutrales o contrarias
+        return recommendation in ['SELL', 'NEUTRAL', 'BUY'] if self.last_operation == 'LONG' \
+            else recommendation in ['BUY', 'NEUTRAL', 'SELL']
+
+    def open_long_position(self, indicators, current_price):
+        print(f"Señal de COMPRA fuerte detectada a {current_price}, abriendo posición en largo.")
+        self.print_indicators(indicators)
+        self.last_operation = 'LONG'
+        self.last_price = current_price
+        self.save_state()
+
+    def open_short_position(self, indicators, current_price):
+        print(f"Señal de VENTA fuerte detectada a {current_price}, abriendo posición en corto.")
+        self.print_indicators(indicators)
+        self.last_operation = 'SHORT'
+        self.last_price = current_price
+        self.save_state()
+
+    def close_position(self, current_price):
+        print(f"Señal de {self.last_operation} cerrada a {current_price}.")
+        self.last_operation = None
+        self.last_price = None
+        self.save_state()
+
+    def print_indicators(self, indicators):
+        print("Detalles de los indicadores:")
+        for key, value in indicators.items():
+            print(f"{key}: {value}")
+
+    def save_state(self):
+        with open('bot_state.pkl', 'wb') as file:
+            pickle.dump(self, file)
+
+    @staticmethod
+    def load_state():
+        if os.path.exists('bot_state.pkl'):
+            with open('bot_state.pkl', 'rb') as file:
+                return pickle.load(file)
+        else:
+            return None
+
+def run_bot():
+    # Configuración del bot
+    symbol = "BTCUSDT"
+    screener = "crypto"
+    exchange = "BINANCE"
+    interval = Interval.INTERVAL_4_HOURS
+
+    # Intentar recuperar el estado del bot
+    bot = SwingTradingBot.load_state()
+    if bot is None:
+        bot = SwingTradingBot(symbol, screener, exchange, interval)
+
+    # Iniciar el bot
+    while True:
+        analysis = bot.get_analysis()
+        bot.trade_decision(analysis)
+        time.sleep(60 * 60 * 4)  # Espera de 4 horas entre cada análisis
 
 if __name__ == "__main__":
-    main()
+    run_bot()
