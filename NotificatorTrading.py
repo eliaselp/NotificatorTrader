@@ -42,110 +42,113 @@ class SwingTradingBot:
         self.ganancia=0
         self.last_operation = None
         self.last_price = None
+        self.last_rsi=None
 
+    def obtener_indicadores(self):
+        analysis = self.handler.get_analysis()
+        # Bollinger Bands
+        bollinger_upper = analysis.indicators['BB.upper']
+        bollinger_lower = analysis.indicators['BB.lower']
+        # Para la banda media, puedes usar la EMA o SMA con la longitud correspondiente
+        bollinger_middle = analysis.indicators['EMA20']  # o 'SMA20' si prefieres SMA
+
+        # RSI con longitud 13
+        rsi = analysis.indicators['RSI']
+        
+        return bollinger_upper, bollinger_middle, bollinger_lower, rsi, bollinger_middle
+
+    
     def get_current_price(self):
         analysis = self.handler.get_analysis()
         return analysis.indicators['close']
 
-    def get_analysis(self):
-        return self.handler.get_analysis()
     
-    def obtener_indicadores(self):
-        analysis = self.handler.get_analysis()
-        ema20 = analysis.indicators['EMA20']
-        ema50 = analysis.indicators['EMA50']
-        adx = analysis.indicators['ADX']
 
-        # Determinar si el RSI indica sobreventa o sobrecompra
-        return ema20, ema50, adx
-
-    def trade_decision(self, analysis):
+    def trade_decision(self):
         current_price = self.get_current_price()
-        summary = analysis.summary
-        indicators = analysis.indicators
-        recommendation = summary['RECOMMENDATION']
-
-        ema20, ema50, adx, = self.obtener_indicadores()
-        # Verificar si hay una tendencia definida usando ADX
-        if ema20 > ema50:
-            if self.last_operation=="SHORT" and recommendation not in ["STRONG_SELL"]:
-                self.close_position(current_price,indicators)
-                if recommendation == "STRONG_BUY":
-                    self.open_long_position(indicators,current_price)
-            if self.last_operation!="LONG" and recommendation=='STRONG_BUY':
-                self.open_long_position(indicators,current_price)
-            elif self.last_operation=="LONG":
-                if recommendation in ["STRONG_BUY"]:
-                    s="Manteniendo la posición"
-                    if self.last_operation:
-                        s+=f"{self.last_operation} a {self.last_price}."
-                    s+=f"\nPrecio actual BTC/USDT: {current_price}\n"
-                    s+=f"Recomendacion: {recommendation}\n"
-                    print(s)  
+        bollinger_upper, bollinger_middle, bollinger_lower, rsi, ema30 = self.obtener_indicadores()
+        if self.last_rsi==None:
+            self.last_rsi=rsi
+        # Calcular la distancia entre las bandas de Bollinger
+        distancia_bandas = bollinger_upper - bollinger_lower
+        # Definir un umbral de volatilidad (ajustar según preferencia)
+        umbral_volatilidad = ema30 * 0.003  # Ejemplo: 7% de la EMA30
+        print(f"Indice de volatilidad: {distancia_bandas-umbral_volatilidad}")
+        #print(f"DISTANDIA DE BANDAS {distancia_bandas}")
+        #print(f"Humbral: {umbral_volatilidad}")
+        if distancia_bandas > umbral_volatilidad:
+            if current_price < ema30:
+                if self.last_rsi <= 30 and rsi > self.last_rsi:
+                    if self.last_operation == None:
+                        self.open_long_position(current_price)
+                    elif self.last_operation == "SHORT":
+                        self.close_position(current_price)
+                        self.open_long_position(current_price)
+                    else:
+                        self.mantener_posicion()
                 else:
-                    self.close_position(current_price,indicators)
-                    if recommendation == "STRONG_SELL":
-                        self.open_short_position(indicators,current_price)    
-            else:
-                s="No ejecutar accion."
-                s+=f"\nPrecio actual BTC/USDT: {current_price}\n"
-                s+=f"Recomendacion: {recommendation}"
-                print(s)
-
-        elif ema20 < ema50:
-            if self.last_operation=="LONG" and recommendation not in ["STRONG_BUY"]:
-                self.close_position(current_price,indicators)
-            if self.last_operation!="SHORT" and recommendation=='STRONG_SELL':
-                self.open_short_position(indicators,current_price)
-            elif self.last_operation=="SHORT":
-                if recommendation in ["STRONG_SELL"]:
-                    s="Manteniendo la posición "
-                    if self.last_operation!=None:
-                        s+=f"{self.last_operation} a {self.last_price}."
-                    s+=f"\nPrecio actual BTC/USDT: {current_price}\n"
-                    s+=f"Recomendacion: {recommendation}\n"
-                    print(s)
+                    if self.last_operation == "LONG":
+                        if self.last_rsi >= 70 and rsi < self.last_rsi:
+                            self.close_position(current_price)
+                            self.open_short_position(current_price)
+                        else:
+                            self.mantener_posicion()
+                    else:
+                        self.mantener_posicion()
+            elif current_price > ema30:
+                if self.last_rsi >= 70 and rsi < self.last_rsi:
+                    if self.last_operation == None:
+                        self.open_short_position(current_price)
+                    elif self.last_operation=="LONG":
+                        self.close_position(current_price)
+                        self.open_short_position(current_price)
+                    else:
+                        self.mantener_posicion()
                 else:
-                    self.close_position(current_price,indicators)
-                    if recommendation == "STRONG_BUY":
-                        self.open_long_position(indicators,current_price)
+                    if self.last_operation == "SHORT":
+                        if self.last_rsi <= 30 and rsi > self.last_rsi:
+                            self.close_position(current_price)
+                            self.open_long_position(current_price)
+                        else:
+                            self.mantener_posicion()
+                    else:
+                        self.mantener_posicion()
             else:
-                s="No ejecutar accion."
-                s+=f"\nPrecio actual BTC/USDT: {current_price}\n"
-                s+=f"Recomendacion: {recommendation}"
-                print(s)
-
-
+                self.mantener_posicion()
         else:
-            s="Manteniendo la posición"
-            if self.last_operation:
-                s+=f"{self.last_operation} a {self.last_price}."
-            s+=f"\nPrecio actual BTC/USDT: {current_price}\n"
-            s+=f"Recomendacion: {recommendation}\n"
-            print(s)
-    def should_close_position(self, recommendation):
-        return recommendation in ['SELL','STRONG_SELL'] if self.last_operation == 'LONG' \
-            else recommendation in ['BUY','STRONG_BUY']
+            print("ZONA DE LATERIZACION O RANGO.")
+            if self.last_operation!=None:
+                self.close_position(current_price)
+        self.last_rsi=rsi
+        print(f"Precio Actual BTC/USDT: {current_price}")
+        print(f"EMA20: {ema30}")
+        print(f"RSI: {rsi}")
 
-    def open_long_position(self, indicators, current_price):
-        s=f"Señal de COMPRA fuerte detectada a {current_price}, abriendo posición en LONG."
+    def mantener_posicion(self):
+        if self.last_operation==None:
+            print("No realizar ninguna accion")
+        else:
+            print(f"Manteniendo la posicion {self.last_operation} en {self.last_price}")
+
+
+
+    def open_long_position(self, current_price):
+        s=f"Señal de COMPRA fuerte detectada a {current_price},\nAbriendo posición en LONG."
         print(s)
-        s+=self.print_indicators(indicators)
         #enviar_correo(s)
         self.last_operation = 'LONG'
         self.last_price = current_price
         self.save_state()
 
-    def open_short_position(self, indicators, current_price):
-        s=f"Señal de VENTA fuerte detectada a {current_price}, abriendo posición en SHORT."
+    def open_short_position(self, current_price):
+        s=f"Señal de VENTA fuerte detectada a {current_price},\nAbriendo posición en SHORT."
         print(s)
-        s+=self.print_indicators(indicators)
         #enviar_correo(s)
         self.last_operation = 'SHORT'
         self.last_price = current_price
         self.save_state()
 
-    def close_position(self, current_price,indicators):
+    def close_position(self, current_price):
         s=f"Señal de {self.last_operation} cerrada a {current_price}.\n"
         s+="Diferencia: +[ganancia] -[perdida]: "
         if(self.last_operation=="SHORT"):
@@ -155,17 +158,10 @@ class SwingTradingBot:
             s+=str(current_price-self.last_price)+"\n"
             self.ganancia+=current_price-self.last_price
         print(s)
-        s+=self.print_indicators(indicators)
         #enviar_correo(s)
         self.last_operation=None
         self.last_price=None
         self.save_state()
-
-    def print_indicators(self, indicators):
-        s="Detalles de los indicadores:\n"
-        for key, value in indicators.items():
-            s+=f"{key}: {value}\n"
-        return s
 
     def save_state(self):
         with open('bot_state.pkl', 'wb') as file:
@@ -216,18 +212,19 @@ def run_bot():
     # Iniciar el bot
     print("----------------------------------------------------\n")
     while True:
+        error=False
         print(f"\nAnalisis: {cont}")
         print(f"Ultima operacion: {bot.last_operation}")
         print(f"Ganancia actual: {bot.ganancia}")
-        cont+=1        
+        cont+=1 
         try:
-            analysis = bot.get_analysis()
-            bot.trade_decision(analysis)
+            bot.trade_decision()
         except requests.exceptions.ConnectionError:
-            print("Error de conexión. Esperando para el próximo análisis...")
-        except Exception as e:
-            print(f"Error inesperado: {e}")
-        
+            print("Error de conexión.")
+        #except Exception as e:
+        #    print(f"Error inesperado: {e}")
+        #    error=True
+
         # Mensaje de espera
         print("Esperando para el próximo análisis...\n---------------------------------")
 
@@ -241,6 +238,8 @@ def run_bot():
             Interval.INTERVAL_1_DAY: 60 * 60 * 24
         }.get(interval, 60)  # Por defecto 1 minuto si la opción no es válida
         
+        if error == True:
+            tiempo_espera=10
         #time.sleep(tiempo_espera)
          
         # Contador regresivo durante el tiempo de espera
