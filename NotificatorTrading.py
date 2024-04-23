@@ -149,7 +149,7 @@ class SwingTradingBot:
             elif(self.last_operation=="LONG"):
                 print(f"Estado: {str(current_price-self.open_price)}")
                 if current_price > self.last_max:
-                    self.stoploss += current_price - self.last_operation
+                    self.stoploss += current_price - self.last_price
                     self.last_max = current_price
             print(f"STOPLOSS: {self.stoploss}")
 
