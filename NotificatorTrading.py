@@ -157,6 +157,7 @@ class SwingTradingBot:
     def open_long_position(self, current_price,s=""):
         s+=f"Señal de COMPRA fuerte detectada a {current_price},\nAbriendo posición en LONG."
         print(s)
+        s+=f"\nGanancia actual: {self.ganancia}"
         enviar_correo(s)
         self.last_operation = 'LONG'
         self.open_price = current_price
@@ -167,6 +168,7 @@ class SwingTradingBot:
     def open_short_position(self, current_price,s=""):
         s+=f"Señal de VENTA fuerte detectada a {current_price},\nAbriendo posición en SHORT."
         print(s)
+        s+=f"\nGanancia actual: {self.ganancia}"
         enviar_correo(s)
         self.last_operation = 'SHORT'
         self.open_price = current_price
@@ -187,6 +189,7 @@ class SwingTradingBot:
             s+=str(current_price-self.open_price)+"\n"
             self.ganancia+=current_price-self.open_price
         print(s)
+        s+=f"\nGanancia actual: {self.ganancia}"
         enviar_correo(s)
         self.last_operation=None
         self.open_price=None
