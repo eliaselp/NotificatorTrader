@@ -41,9 +41,12 @@ class SwingTradingBot:
         )
         self.ganancia=0
         self.last_operation = None
-        self.last_price = None
+        self.open_price = None
+        self.last_price=None
+        self.last_max=None
         self.last_rsi=None
-
+        self.last_stoploss=None
+        self.riesgo=0.005
     def obtener_indicadores(self):
         analysis = self.handler.get_analysis()
         # Bollinger Bands
@@ -51,10 +54,8 @@ class SwingTradingBot:
         bollinger_lower = analysis.indicators['BB.lower']
         # Para la banda media, puedes usar la EMA o SMA con la longitud correspondiente
         bollinger_middle = analysis.indicators['EMA20']  # o 'SMA20' si prefieres SMA
-
         # RSI con longitud 13
         rsi = analysis.indicators['RSI']
-        
         return bollinger_upper, bollinger_middle, bollinger_lower, rsi, bollinger_middle
 
     
@@ -69,6 +70,8 @@ class SwingTradingBot:
         bollinger_upper, bollinger_middle, bollinger_lower, rsi, ema30 = self.obtener_indicadores()
         if self.last_rsi==None:
             self.last_rsi=rsi
+        if self.last_price==None:
+            self.last_price=current_price
         # Calcular la distancia entre las bandas de Bollinger
         distancia_bandas = bollinger_upper - bollinger_lower
         # Definir un umbral de volatilidad (ajustar según preferencia)
@@ -76,6 +79,14 @@ class SwingTradingBot:
         print(f"Indice de volatilidad: {distancia_bandas-umbral_volatilidad}")
         #print(f"DISTANDIA DE BANDAS {distancia_bandas}")
         #print(f"Humbral: {umbral_volatilidad}")
+        if(self.last_operation!=None):
+            if(self.last_operation=="LONG"):
+                if current_price <= self.stoploss:
+                    self.close_position(current_price,True)
+            elif(self.last_operation=="SHORT"):
+                if current_price >= self.stoploss:
+                    self.close_position(current_price,True)
+
         if distancia_bandas > umbral_volatilidad:
             if current_price < ema30:
                 if self.last_rsi <= 30 and rsi > self.last_rsi:
@@ -85,16 +96,16 @@ class SwingTradingBot:
                         self.close_position(current_price)
                         self.open_long_position(current_price)
                     else:
-                        self.mantener_posicion()
+                        self.mantener_posicion(current_price)
                 else:
                     if self.last_operation == "LONG":
                         if self.last_rsi >= 70 and rsi < self.last_rsi:
                             self.close_position(current_price)
                             self.open_short_position(current_price)
                         else:
-                            self.mantener_posicion()
+                            self.mantener_posicion(current_price)
                     else:
-                        self.mantener_posicion()
+                        self.mantener_posicion(current_price)
             elif current_price > ema30:
                 if self.last_rsi >= 70 and rsi < self.last_rsi:
                     if self.last_operation == None:
@@ -103,64 +114,83 @@ class SwingTradingBot:
                         self.close_position(current_price)
                         self.open_short_position(current_price)
                     else:
-                        self.mantener_posicion()
+                        self.mantener_posicion(current_price)
                 else:
                     if self.last_operation == "SHORT":
                         if self.last_rsi <= 30 and rsi > self.last_rsi:
                             self.close_position(current_price)
                             self.open_long_position(current_price)
                         else:
-                            self.mantener_posicion()
+                            self.mantener_posicion(current_price)
                     else:
-                        self.mantener_posicion()
+                        self.mantener_posicion(current_price)
             else:
-                self.mantener_posicion()
+                self.mantener_posicion(current_price)
         else:
             print("ZONA DE LATERIZACION O RANGO.")
             if self.last_operation!=None:
                 self.close_position(current_price)
         self.last_rsi=rsi
+        self.last_price=current_price
         print(f"Precio Actual BTC/USDT: {current_price}")
         print(f"EMA20: {ema30}")
         print(f"RSI: {rsi}")
 
-    def mantener_posicion(self):
+    def mantener_posicion(self,current_price):
         if self.last_operation==None:
             print("No realizar ninguna accion")
         else:
-            print(f"Manteniendo la posicion {self.last_operation} en {self.last_price}")
+            print(f"Manteniendo la posicion {self.last_operation} en {self.open_price}")
+            if(self.last_operation=="SHORT"):
+                print(f"Estado: {str(self.open_price-current_price)}")
+                if current_price < self.last_max:
+                    self.stoploss -= self.last_price-current_price
+                    self.last_max = current_price
+            elif(self.last_operation=="LONG"):
+                print(f"Estado: {str(current_price-self.open_price)}")
+                if current_price > self.last_max:
+                    self.stoploss += current_price - self.last_operation
+                    self.last_max = current_price
+            print(f"STOPLOSS: {self.stoploss}")
 
 
-
-    def open_long_position(self, current_price):
-        s=f"Señal de COMPRA fuerte detectada a {current_price},\nAbriendo posición en LONG."
+    def open_long_position(self, current_price,s=""):
+        s+=f"Señal de COMPRA fuerte detectada a {current_price},\nAbriendo posición en LONG."
         print(s)
-        #enviar_correo(s)
+        enviar_correo(s)
         self.last_operation = 'LONG'
-        self.last_price = current_price
+        self.open_price = current_price
+        self.last_max=current_price
+        self.stoploss=current_price-(current_price*self.riesgo)
         self.save_state()
 
-    def open_short_position(self, current_price):
-        s=f"Señal de VENTA fuerte detectada a {current_price},\nAbriendo posición en SHORT."
+    def open_short_position(self, current_price,s=""):
+        s+=f"Señal de VENTA fuerte detectada a {current_price},\nAbriendo posición en SHORT."
         print(s)
-        #enviar_correo(s)
+        enviar_correo(s)
         self.last_operation = 'SHORT'
-        self.last_price = current_price
+        self.open_price = current_price
+        self.last_max = current_price
+        self.stoploss = current_price+(current_price*self.riesgo)
         self.save_state()
 
-    def close_position(self, current_price):
-        s=f"Señal de {self.last_operation} cerrada a {current_price}.\n"
+    def close_position(self, current_price,stop=False):
+        s=""
+        if stop==True:
+            s+="SEÑAL DE STOPLOSS DISPARADA\n"
+        s+=f"Señal de {self.last_operation} cerrada a {current_price}.\n"
         s+="Diferencia: +[ganancia] -[perdida]: "
         if(self.last_operation=="SHORT"):
-            s+=str(self.last_price-current_price)+"\n"
-            self.ganancia+=self.last_price-current_price
+            s+=str(self.open_price-current_price)+"\n"
+            self.ganancia+=self.open_price-current_price
         elif(self.last_operation=="LONG"):
-            s+=str(current_price-self.last_price)+"\n"
-            self.ganancia+=current_price-self.last_price
+            s+=str(current_price-self.open_price)+"\n"
+            self.ganancia+=current_price-self.open_price
         print(s)
-        #enviar_correo(s)
+        enviar_correo(s)
         self.last_operation=None
-        self.last_price=None
+        self.open_price=None
+        self.last_max=None
         self.save_state()
 
     def save_state(self):
@@ -210,7 +240,7 @@ def run_bot():
         bot = SwingTradingBot(symbol, screener, exchange, interval)
     
     # Iniciar el bot
-    print("----------------------------------------------------\n")
+    print("----------------------------------------\n")
     while True:
         error=False
         print(f"\nAnalisis: {cont}")
@@ -221,6 +251,7 @@ def run_bot():
             bot.trade_decision()
         except requests.exceptions.ConnectionError:
             print("Error de conexión.")
+            error=True
         #except Exception as e:
         #    print(f"Error inesperado: {e}")
         #    error=True
@@ -239,16 +270,20 @@ def run_bot():
         }.get(interval, 60)  # Por defecto 1 minuto si la opción no es válida
         
         if error == True:
-            tiempo_espera=10
-        #time.sleep(tiempo_espera)
-         
-        # Contador regresivo durante el tiempo de espera
-        for i in range(tiempo_espera, 0, -1):
-            sys.stdout.write("\rTiempo restante: {:02d}:{:02d} ".format(i // 60, i % 60))
+            for i in range(10, 0, -1):
+                sys.stdout.write("\rTiempo restante: 00:{:02d} ".format(i))
+                sys.stdout.flush()
+                time.sleep(1)
+            sys.stdout.write("\r" + " " * 50)  # Limpiar la línea después de la cuenta regresiva
             sys.stdout.flush()
-            time.sleep(1)
-        sys.stdout.write("\r" + " " * 50)  # Limpiar la línea después de la cuenta regresiva
-        sys.stdout.flush()
+        else:
+            # Contador regresivo durante el tiempo de espera
+            for i in range(tiempo_espera, 0, -1):
+                sys.stdout.write("\rTiempo restante: {:02d}:{:02d} ".format(i // 60, i % 60))
+                sys.stdout.flush()
+                time.sleep(1)
+            sys.stdout.write("\r" + " " * 50)  # Limpiar la línea después de la cuenta regresiva
+            sys.stdout.flush()
 
 
 if __name__ == "__main__":
