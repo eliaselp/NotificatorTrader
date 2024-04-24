@@ -46,7 +46,7 @@ class SwingTradingBot:
         self.last_max=None
         self.last_rsi=None
         self.last_stoploss=None
-        self.riesgo=0.005
+        self.riesgo=0.01
     def obtener_indicadores(self):
         analysis = self.handler.get_analysis()
         # Bollinger Bands
@@ -75,7 +75,7 @@ class SwingTradingBot:
         # Calcular la distancia entre las bandas de Bollinger
         distancia_bandas = bollinger_upper - bollinger_lower
         # Definir un umbral de volatilidad (ajustar según preferencia)
-        umbral_volatilidad = ema30 * 0.003  # Ejemplo: 7% de la EMA30
+        umbral_volatilidad = ema30 * 0.001
         print(f"Indice de volatilidad: {distancia_bandas-umbral_volatilidad}")
         #print(f"DISTANDIA DE BANDAS {distancia_bandas}")
         #print(f"Humbral: {umbral_volatilidad}")
@@ -149,7 +149,7 @@ class SwingTradingBot:
             elif(self.last_operation=="LONG"):
                 print(f"Estado: {str(current_price-self.open_price)}")
                 if current_price > self.last_max:
-                    self.stoploss += current_price - self.last_price
+                    self.stoploss += current_price - self.last_operation
                     self.last_max = current_price
             print(f"STOPLOSS: {self.stoploss}")
 
@@ -157,23 +157,23 @@ class SwingTradingBot:
     def open_long_position(self, current_price,s=""):
         s+=f"Señal de COMPRA fuerte detectada a {current_price},\nAbriendo posición en LONG."
         print(s)
-        s+=f"\nGanancia actual: {self.ganancia}"
+        s+=f"Ganancia actual: {self.ganancia}"
         enviar_correo(s)
         self.last_operation = 'LONG'
         self.open_price = current_price
         self.last_max=current_price
-        self.stoploss=current_price-(current_price*self.riesgo)
+        self.stoploss=current_price-400
         self.save_state()
 
     def open_short_position(self, current_price,s=""):
         s+=f"Señal de VENTA fuerte detectada a {current_price},\nAbriendo posición en SHORT."
         print(s)
-        s+=f"\nGanancia actual: {self.ganancia}"
+        s+=f"Ganancia actual: {self.ganancia}"
         enviar_correo(s)
         self.last_operation = 'SHORT'
         self.open_price = current_price
         self.last_max = current_price
-        self.stoploss = current_price+(current_price*self.riesgo)
+        self.stoploss = current_price+400
         self.save_state()
 
     def close_position(self, current_price,stop=False):
@@ -189,7 +189,7 @@ class SwingTradingBot:
             s+=str(current_price-self.open_price)+"\n"
             self.ganancia+=current_price-self.open_price
         print(s)
-        s+=f"\nGanancia actual: {self.ganancia}"
+        s+=f"Ganancia actual: {self.ganancia}"
         enviar_correo(s)
         self.last_operation=None
         self.open_price=None
