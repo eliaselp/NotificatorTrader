@@ -119,7 +119,7 @@ class SwingTradingBot:
         if self.current_operation == None:
             if ema9 > ema21 and rsi > 50 and rsi < 70:
                 self.open_long(current_price,s)
-            elif ema9 < ema21 and self.last_rsi < 50 and rsi > 30:
+            elif ema9 < ema21 and rsi < 50 and rsi > 30:
                 self.open_short(current_price,s)
             else:
                 self.mantener(current_price,s)
