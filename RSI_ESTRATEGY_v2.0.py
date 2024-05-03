@@ -1,13 +1,13 @@
 import pickle
 import os
 import sys
-from tradingview_ta import TA_Handler, Interval, Exchange
-import requests
+from tradingview_ta import TA_Handler, Interval
 import time
 import datetime
-import pandas as pd
 import ccxt
 import smtplib
+import pandas as pd
+
 from email.message import EmailMessage
 
 # Configuración del servidor SMTP
@@ -44,6 +44,7 @@ class SwingTradingBot:
             exchange=exchange,
             interval=interval
         )
+        self.interval=interval
         self.ganancia=0
         self.current_operation=None
         self.open_price=None
@@ -60,40 +61,27 @@ class SwingTradingBot:
         symbol = 'BTC/USDT'
         timeframe = '1m'
         # Obtener los datos históricos usando el método fetch_ohlcv
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=25)
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=500)
 
-        # Convertir los datos a una lista de diccionarios y calcular EMAs y RSI
-        closing_prices = [x[4] for x in ohlcv]
-        timestamps = [x[0] for x in ohlcv]
-
-        # Funciones para calcular EMA y RSI
-        def calculate_ema(prices, days):
-            ema = [sum(prices[:days]) / days]
-            for price in prices[days:]:
-                ema.append((price * (2 / (days + 1))) + ema[-1] * (1 - (2 / (days + 1))))
-            return ema
-
-        def calculate_rsi(prices, period=14):
-            deltas = [prices[i+1] - prices[i] for i in range(len(prices)-1)]
-            gains = [delta if delta > 0 else 0 for delta in deltas]
-            losses = [-delta if delta < 0 else 0 for delta in deltas]
-            avg_gain = sum(gains[:period]) / period
-            avg_loss = sum(losses[:period]) / period
-            rs = avg_gain / avg_loss if avg_loss != 0 else 0
-            rsi = 100 - (100 / (1 + rs))
-            return rsi
+        # Convertir los datos a un DataFrame de pandas
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
         # Calcular EMAs
-        ema9 = calculate_ema(closing_prices, 9)[-1]
-        ema21 = calculate_ema(closing_prices, 21)[-1]
+        df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
+        df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
+        df['ema55'] = df['close'].ewm(span=55, adjust=False).mean()
+        df['ema100'] = df['close'].ewm(span=100, adjust=False).mean()
+        df['ema200'] = df['close'].ewm(span=200, adjust=False).mean()
 
-        # Calcular RSI
-        rsi = calculate_rsi(closing_prices)
+        # Devolver los últimos valores de las EMAs como variables separadas
+        ema9 = df['ema9'].iloc[-1]
+        ema21 = df['ema21'].iloc[-1]
+        ema55 = df['ema55'].iloc[-1]
+        ema100 = df['ema100'].iloc[-1]
+        ema200 = df['ema200'].iloc[-1]
 
-        # Convertir el último timestamp a un objeto datetime
-        last_timestamp = datetime.datetime.fromtimestamp(timestamps[-1] / 1000)
-        # Devolver los últimos valores de la EMA9, EMA21 y RSI junto con el timestamp
-        return ema9, ema21, rsi
+        return ema9, ema21, ema55, ema100, ema200
     
 
     def get_current_price(self):
@@ -103,6 +91,7 @@ class SwingTradingBot:
 
 
     def trade(self):
+        nueva=False
         print("\nPROCESANDO ANALISIS...")
         current_price = self.get_current_price()
         s=f"[#] Analisis # {self.analisis}\n"
@@ -111,37 +100,48 @@ class SwingTradingBot:
         s+=f"[#] GANANCIA ACTUAL: {self.ganancia}\n"
         s+=f"[#] PRECIO BTC-USDT: {current_price}\n"
 
-        ema9, ema21, rsi = self.get_indicator()
-        current_price = self.get_current_price()
-        if self.last_rsi==None:
-            self.last_rsi=rsi
+        ema9,ema21,ema55,ema100,ema200=self.get_indicator()
 
-        if self.current_operation == None:
-            if ema9 > ema21 and rsi > 50 and rsi < 70:
-                self.open_long(current_price,s)
-            elif ema9 < ema21 and rsi < 50 and rsi > 30:
-                self.open_short(current_price,s)
+        
+        if self.current_operation == "LONG":
+            if ema9 < ema21:
+                s+=self.close_operations(current_price,s)
+                nueva=True
             else:
-                self.mantener(current_price,s)
-                #============================================
-        elif self.current_operation == "LONG":
-            if ema9 < ema21 or rsi >= 70:
-                self.close_operations(current_price,s)
-            else:
-                self.mantener(current_price,s)
+                s+=self.mantener(current_price,s)
                 #============================================
         elif self.current_operation == "SHORT":
-            if ema9 > ema21 or rsi <= 30:
-                self.close_operations(current_price,s)
+            if ema9 > ema21:
+                s+=self.close_operations(current_price,s)
+                nueva=True
             else:
-                self.mantener(current_price,s)
+                s+=self.mantener(current_price,s)
                 #============================================
-        print(f"[#] EMA 9: {ema9}")
-        print(f"[#] EMA 21: {ema21}")
-        print(f"[#] RSI: {rsi}")
+
+                
+        if self.current_operation == None:
+            if ((ema9>ema21 and ema9>ema55 and ema9>ema100 and ema9>ema200) and (ema21>ema55 and ema21>ema100 and ema21>ema200) and current_price>ema200):
+                s+=self.open_long(current_price,s)
+                nueva=True
+            elif ((ema9<ema21 and ema9<ema55 and ema9<ema100 and ema9<ema200) and (ema21<ema55 and ema21<ema100 and ema21<ema200) and current_price<ema200):
+                s+=self.open_short(current_price,s)
+                nueva=True
+            else:
+                s+=self.mantener(current_price,s)
+                #============================================
+        s+=f"[#] EMA 9: {ema9}\n"
+        s+=f"[#] EMA 21: {ema21}\n"
+        s+=f"[#] EMA 55: {ema55}\n"
+        s+=f"[#] EMA 100: {ema100}\n"
+        s+=f"[#] EMA 200: {ema200}\n"
+        
+        print(s)
         print("--------------------------------------\n")
+        if nueva == True:
+            enviar_correo(s)
 
     def mantener(self,current_price,s=""):
+        s=""
         if self.current_operation != None:
             s+=f">>>> MANTENER OPERACION {self.current_operation} a {current_price}\n"
             s+="[#] ESTADO: "
@@ -151,25 +151,28 @@ class SwingTradingBot:
                 s+=str(self.open_price-current_price)+"\n"
         else:
             s+="[#] NO EJECUTAR ACCION\n"
-        print(s)
+        return s
 
 
 
     def open_long(self,current_price,s=""):
+        s=""
         s+=f">>>> ABRIENDO POSICION LONG A {current_price}\n"
         self.current_operation="LONG"
         self.open_price=current_price
         self.save_state()
-        print(s)
+        return s
 
     def open_short(self,current_price,s=""):
+        s=""
         s+=f">>>> ABRIENDO POSICION SHORT A {current_price}\n"
         self.current_operation="SHORT"
         self.open_price=current_price
         self.save_state()
-        print(s)
+        return s
 
     def close_operations(self,current_price,s=""):
+        s=""
         s+=f">>>> CERRANDO POSICION {self.current_operation}\n"
         if self.current_operation == "LONG":
             self.ganancia+=current_price - self.open_price
@@ -181,7 +184,7 @@ class SwingTradingBot:
         self.open_price=None
         self.current_operation=None
         self.save_state()
-        print(s)
+        return s
 
     def save_state(self):
         with open('bot_state.pkl', 'wb') as file:
@@ -197,47 +200,45 @@ class SwingTradingBot:
 
 
 def run_bot():
-    cont=1
-    # Configuración inicial del bot
-    symbol = "BTCUSDT.PS"
-    screener = "crypto"
-    exchange = "BINGX"
-    
-    # Solicitar al usuario que seleccione la temporalidad
-    print("Seleccione la temporalidad:")
-    print("1. 1 minuto")
-    print("2. 15 minutos")
-    print("3. 30 minutos")
-    print("4. 1 hora")
-    print("5. 4 horas")
-    print("6. 1 día")
-    opcion = input("Ingrese el número de la opción deseada: ")
-
-    intervalos = {
-        "1": Interval.INTERVAL_1_MINUTE,
-        "2": Interval.INTERVAL_15_MINUTES,
-        "3": Interval.INTERVAL_30_MINUTES,
-        "4": Interval.INTERVAL_1_HOUR,
-        "5": Interval.INTERVAL_4_HOURS,
-        "6": Interval.INTERVAL_1_DAY
-    }
-    
-    interval = intervalos.get(opcion, Interval.INTERVAL_1_MINUTE)  # Por defecto 1 minuto si la opción no es válida
-    
     # Intentar recuperar el estado del bot
     bot = SwingTradingBot.load_state()
     if bot is None:
+        # Configuración inicial del bot
+        symbol = "BTCUSDT.PS"
+        screener = "crypto"
+        exchange = "BINGX"
+        
+        # Solicitar al usuario que seleccione la temporalidad
+        print("Seleccione la temporalidad:")
+        print("1. 1 minuto")
+        print("2. 15 minutos")
+        print("3. 30 minutos")
+        print("4. 1 hora")
+        print("5. 4 horas")
+        print("6. 1 día")
+        opcion = input("Ingrese el número de la opción deseada: ")
+
+        intervalos = {
+            "1": Interval.INTERVAL_1_MINUTE,
+            "2": Interval.INTERVAL_15_MINUTES,
+            "3": Interval.INTERVAL_30_MINUTES,
+            "4": Interval.INTERVAL_1_HOUR,
+            "5": Interval.INTERVAL_4_HOURS,
+            "6": Interval.INTERVAL_1_DAY
+        }
+        
+        interval = intervalos.get(opcion, Interval.INTERVAL_1_MINUTE)  # Por defecto 1 minuto si la opción no es válida
         bot = SwingTradingBot(symbol, screener, exchange, interval)
     
     # Iniciar el bot
-    print("----------------------------------------\n")
     while True:
+        os.system("cls")
         error=True
-        #try:
-        bot.trade()
-        #except Exception as e:
-        #    print(f"Error: {str(e)}")
-        #    error=True
+        try:
+            bot.trade()
+        except Exception as e:
+            print(f"Error: {str(e)}\n")
+            error=True
         print("Esperando para el próximo análisis...")
         tiempo_espera=0
         if error == True:
