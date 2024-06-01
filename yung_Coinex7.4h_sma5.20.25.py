@@ -111,7 +111,7 @@ class SwingTradingBot:
     #ESTRATEGIA LISTA
     def trade(self):
         data=self.get_data(500,"4hour")
-        patron=self.identificar_patron(data)
+        patron=self.identificar_patron(data,20)
         balance=7
         s=""
         nueva=False
@@ -132,11 +132,11 @@ class SwingTradingBot:
                 
         if self.current_operation == None:
             if patron=="compra" and balance*0.9>=2:
-                self.set_apalancamiento("LONG")
+                #self.set_apalancamiento("LONG")
                 s+=self.open_long()
                 nueva=True
             elif patron=="venta" and balance*0.9>=2:
-                self.set_apalancamiento("SHORT")
+                #self.set_apalancamiento("SHORT")
                 s+=self.open_short()
                 nueva=True
             else:
@@ -159,14 +159,14 @@ class SwingTradingBot:
         return s
 
 
-    def identificar_patron(self,ohlcv_df):
+    def identificar_patron(self,ohlcv_df,ventana):
         # Encontrar máximos y mínimos locales
         # Asegurarse de que la ventana rodante tenga exactamente 5 elementos antes de aplicar la función lambda
         maximos = ohlcv_df['high'].rolling(window=5, center=False).apply(
-            lambda x: x[2] if (len(x) == 5 and x[2] == x.max()) else np.nan, raw=True
+            lambda x: x[ventana//2] if (len(x) == ventana and x[ventana//2] == x.max()) else np.nan, raw=True
         )
         minimos = ohlcv_df['low'].rolling(window=5, center=False).apply(
-            lambda x: x[2] if (len(x) == 5 and x[2] == x.min()) else np.nan, raw=True
+            lambda x: x[ventana//2] if (len(x) == ventana and x[ventana//2] == x.min()) else np.nan, raw=True
         )
         # Últimos precios
         ultimo_maximo = maximos.last_valid_index()
@@ -207,11 +207,10 @@ class SwingTradingBot:
         if self.current_operation == "LONG":
             estado=current_price - self.open_price
             self.ganancia+=estado
-            s+=f"[#] ESTADO: {estado}\n"
         else:
             estado=self.open_price - current_price
             self.ganancia+=estado
-            s+=f"[#] ESTADO: {estado}\n"
+        s+=f"[#] ESTADO: {estado}\n"
         s+=f"[#] GANANCIA: {self.ganancia}\n"
         if estado>0:
             self.cant_opr_win+=1
@@ -239,31 +238,25 @@ class SwingTradingBot:
 
 
     #LISTO
-    def open_long(self,s=""):
+    def open_long(self):
+        s=""
         if self.Operar:
             self.open("LONG")
         self.open_price=self.current_price
-        s=""
-        if self.open_price == None:
-            s+=f">>>> Error al abrir posicion en long:\n"
-        else:
-            s+=f">>>> ABRIENDO POSICION LONG A {self.open_price}\n"
-            self.current_operation="LONG"
-            self.save_state()
+        s+=f">>>> ABRIENDO POSICION LONG A {self.open_price}\n"
+        self.current_operation="LONG"
+        self.save_state()
         return s
 
     #LISTO
-    def open_short(self,s=""):
+    def open_short(self):
+        s=""
         if self.Operar:
             self.open("SHORT")
         self.open_price=self.current_price
-        s=""
-        if self.open_price == None:
-            s+=f">>>> Error al abrir posicion en short:\n"
-        else:
-            s+=f">>>> ABRIENDO POSICION SHORT A {self.open_price}\n"
-            self.current_operation="SHORT"
-            self.save_state()
+        s+=f">>>> ABRIENDO POSICION SHORT A {self.open_price}\n"
+        self.current_operation="SHORT"
+        self.save_state()
         return s
 
     #LISTO
