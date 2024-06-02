@@ -4,6 +4,7 @@ import platform
 import sys
 import time
 import smtplib
+import json
 import pandas as pd
 import numpy as np
 from email.message import EmailMessage
@@ -50,16 +51,15 @@ class SwingTradingBot:
         secret_key = "CA2792E400D023DAD732CA41C4ED0B98B0CC638FF77D9C65"  # Replace with your secret key
         self.ENVIO_MAIL=True
         self.Operar=False
-        self.simbol="BTCUSDT"
         self.email="liranzaelias@gmail.com"
-        self.size=200
-        self.ventana=5
+        self.simbol="BTCUSDT"
+        self.size=30
         self.temporalidad="1min"
+        self.ventana=5
 
         self.client=RequestsClient(access_id=access_id,secret_key=secret_key)
         self.apalancamiento=apalancamiento
         self.last_apalancamiento=None
-        self.simbol="BTC/USDT"
         self.ganancia=0
         self.current_operation=None
         self.current_price=None
@@ -67,18 +67,16 @@ class SwingTradingBot:
         self.open_price=None
         self.last_rsi=None
         self.analisis=1
-        self.set_apalancamiento("LONG")
-        self.set_apalancamiento("SHORT")
         self.save_state()
 
     
     #LISTO
-    def get_data(self,size,temporalidad):
+    def get_data(self):
         request_path = "/futures/kline"
         params = {
             "market":self.simbol,
-            "limit":size,
-            "period":temporalidad
+            "limit":self.size,
+            "period":self.temporalidad
         }
         response = self.client.request(
             "GET",
@@ -97,8 +95,7 @@ class SwingTradingBot:
         return ohlcv_df
 
     def identificar_patron(self):
-        ohlcv_df=self.get_data(self.size,self.temporalidad)
-
+        ohlcv_df=self.get_data()
         # Encontrar máximos y mínimos locales
         # Asegurarse de que la ventana rodante tenga exactamente 5 elementos antes de aplicar la función lambda
         maximos = ohlcv_df['high'].rolling(window=5, center=False).apply(
@@ -301,20 +298,20 @@ def run_bot():
     # Iniciar el bot
     while True:
         error=False
-        try:
-            print("\nPROCESANDO ANALISIS...")
-            s=bot.trade()
-            clear_console()
-            print(s)
-        except Exception as e:
-            clear_console()
-            print(f"Error: {str(e)}\n")
-            error=True
+        #try:
+        print("\nPROCESANDO ANALISIS...")
+        s=bot.trade()
+        clear_console()
+        print(s)
+        #except Exception as e:
+        #    clear_console()
+        #    print(f"Error: {str(e)}\n")
+        #    error=True
         print("Esperando para el próximo análisis...")
         if error:
             tiempo_espera=1
         else:
-            tiempo_espera=5
+            tiempo_espera=1
         for i in range(tiempo_espera, 0, -1):
             sys.stdout.write("\rTiempo restante: {:02d}:{:02d} ".format(i // 60, i % 60))
             sys.stdout.flush()
