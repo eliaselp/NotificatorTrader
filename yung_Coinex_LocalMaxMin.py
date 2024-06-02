@@ -3,22 +3,14 @@ import platform
 import sys
 import time
 import pickle
-import json
-
 import pandas as pd
 import numpy as np
 
 from client import RequestsClient
 import correo
 '''
-
-import requests
-import hashlib
-import hmac
-from urllib.parse import urlencode
-from hashlib import sha256
-
-
+ ["1min", "3min", "5min", "15min", "30min", "1hour", "2hour", 
+ "4hour", "6hour", "12hour" , "1day", "3day", "1week"]
 '''
 
 # from IPython.display import clear_output
@@ -221,16 +213,20 @@ class SwingTradingBot:
         self.save_state()
         return s
 
+
     #LISTO
     def mantener(self,current_price,s=""):
         s=""
         if self.current_operation != None:
             s+=f">>>> MANTENER OPERACION {self.current_operation} a {self.open_price}\n"
-            s+="[#] ESTADO: "
+            estado=0
             if self.current_operation == "LONG":
-                s+=str(current_price-self.open_price)+"\n"
+                estado=current_price - self.open_price
+                self.ganancia+=estado
             else:
-                s+=str(self.open_price-current_price)+"\n"
+                estado=self.open_price - current_price
+                self.ganancia+=estado
+            s+=f"[#] ESTADO: {estado}"
         else:
             s+="[#] NO EJECUTAR ACCION\n"
         return s
