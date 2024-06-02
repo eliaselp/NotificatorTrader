@@ -56,6 +56,7 @@ class SwingTradingBot:
         self.size=30
         self.temporalidad="1min"
         self.ventana=5
+        
 
         self.client=RequestsClient(access_id=access_id,secret_key=secret_key)
         self.apalancamiento=apalancamiento
@@ -67,6 +68,9 @@ class SwingTradingBot:
         self.open_price=None
         self.last_rsi=None
         self.analisis=1
+        self.cant_opr=0
+        self.cant_win=0
+        self.cant_loss=0
         self.save_state()
 
     
@@ -175,6 +179,9 @@ class SwingTradingBot:
                 #============================================
         
         s+=f"[#] BALANCE: {balance} USDT\n"
+        s+=f"[#] OPERACIONES: {self.cant_opr}\n"
+        s+=f"[#] GANADAS: {self.cant_win}\n"
+        s+=f"[#] PERDIDAS: {self.cant_loss}\n"
         s+="\n--------------------------------------\n"
         if nueva == True and self.ENVIO_MAIL==True:
             enviar_correo(s)
