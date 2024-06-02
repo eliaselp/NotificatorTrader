@@ -148,7 +148,7 @@ class SwingTradingBot:
         s+=f"[#] OPERACION ACTUAL: {self.current_operation}\n"
         s+=f"[#] GANANCIA ACTUAL: {self.ganancia}\n"
         s+=f"[#] PRECIO BTC-USDT: {self.current_price}\n"
-        
+        s+=f"[#] PATRON: {patron}\n"
         balance=7
         
         if self.current_operation == "LONG":
