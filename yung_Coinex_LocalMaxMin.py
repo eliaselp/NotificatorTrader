@@ -196,9 +196,17 @@ class SwingTradingBot:
         if self.current_operation == "LONG":
             self.ganancia+=current_price - self.open_price
             s+=f"[#] ESTADO: {current_price - self.open_price}\n"
+            if current_price - self.open_price > 0:
+                self.cant_win+=1
+            else:
+                self.cant_loss+=1
         else:
             self.ganancia+=self.open_price - current_price
             s+=f"[#] ESTADO: {self.open_price - current_price}\n"
+            if self.open_price - current_price > 0:
+                self.cant_win+=1
+            else:
+                self.cant_loss+=1
         s+=f"[#] GANANCIA: {self.ganancia}\n"
         self.open_price=None
         self.current_operation=None
