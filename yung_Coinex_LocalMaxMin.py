@@ -326,7 +326,7 @@ def run_bot():
         if error:
             tiempo_espera=1
         else:
-            tiempo_espera=1
+            tiempo_espera=5
         for i in range(tiempo_espera, 0, -1):
             sys.stdout.write("\rTiempo restante: {:02d}:{:02d} ".format(i // 60, i % 60))
             sys.stdout.flush()
