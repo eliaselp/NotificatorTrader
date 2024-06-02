@@ -1,19 +1,23 @@
+import pickle
 import os
 import platform
 import sys
 import time
-import pickle
+import smtplib
 import pandas as pd
 import numpy as np
+from email.message import EmailMessage
 
 from client import RequestsClient
-import correo
-'''
- ["1min", "3min", "5min", "15min", "30min", "1hour", "2hour", 
- "4hour", "6hour", "12hour" , "1day", "3day", "1week"]
-'''
-
 # from IPython.display import clear_output
+
+# Configuración del servidor SMTP
+smtp_server = "smtp.gmail.com"
+smtp_port = 587
+smtp_username = "tradingLiranza@gmail.com"
+smtp_password = "gkqnjoscanyjcver"
+
+
 def clear_console():
     os_system = platform.system()
     if os_system == 'Windows':
@@ -21,7 +25,21 @@ def clear_console():
     else:
         os.system('clear')
 
-
+# Función para enviar correo electrónico
+def enviar_correo(s):
+    destinatarios = ["liranzaelias@gmail.com"]
+    msg = EmailMessage()
+    msg['Subject'] = 'ALERTA DE DECISION DE TRADING'
+    msg['From'] = smtp_username
+    msg['To'] = ", ".join(destinatarios)
+    msg.set_content(s)
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(msg)
+    except Exception as e:
+        print(f"Error al enviar correo: {e}")
 
 
 # Clase del bot de trading
@@ -32,49 +50,27 @@ class SwingTradingBot:
         secret_key = "CA2792E400D023DAD732CA41C4ED0B98B0CC638FF77D9C65"  # Replace with your secret key
         self.ENVIO_MAIL=True
         self.Operar=False
-        self.delete_fast=False
         self.simbol="BTCUSDT"
         self.email="liranzaelias@gmail.com"
+        self.size=200
+        self.ventana=5
 
         self.client=RequestsClient(access_id=access_id,secret_key=secret_key)
         self.apalancamiento=apalancamiento
+        self.last_apalancamiento=None
+        self.simbol="BTC/USDT"
         self.ganancia=0
-        self.current_price=None
         self.current_operation=None
+        self.current_price=None
         self.id_operation=None
         self.open_price=None
+        self.last_rsi=None
         self.analisis=1
-
-        self.cant_opr=0
-        self.cant_opr_win=0
-        self.cant_opr_over=0
-
+        self.set_apalancamiento("LONG")
+        self.set_apalancamiento("SHORT")
         self.save_state()
 
-
     
-
-    def get_balance(self):
-        pass
-
-
-     #LISTO
-    def get_balance(self):
-        pass    
-
-    
-    #LISTO
-    def set_apalancamiento(self,modo):
-        pass
-
-    def open(self,tipo):
-        pass
-    
-
-
-
-    
-
     #LISTO
     def get_data(self,size,temporalidad):
         request_path = "/futures/kline"
@@ -99,66 +95,16 @@ class SwingTradingBot:
         self.current_price = ohlcv_df['close'].iloc[-1]
         return ohlcv_df
 
+    def identificar_patron(self):
+        ohlcv_df=self.get_data(self.size,self.ventana)
 
-    #ESTRATEGIA LISTA
-    def trade(self):
-        data=self.get_data(500,"4hour")
-        patron=self.identificar_patron(data,20)
-        balance=7
-        s=""
-        nueva=False
-        if self.current_operation == "LONG":
-            if patron in ["venta","lateralizacion"]:
-                s+=self.close_operations(self.current_price)
-                nueva=True
-            else:
-                s+=self.mantener(self.current_price)
-        elif self.current_operation == "SHORT":
-            if (patron in ["compra","lateralizacion"]):
-                s+=self.close_operations(self.current_price)
-                nueva=True
-            else:
-                s+=self.mantener(self.current_price)
-                #============================================
-
-                
-        if self.current_operation == None:
-            if patron=="compra" and balance*0.9>=2:
-                #self.set_apalancamiento("LONG")
-                s+=self.open_long()
-                nueva=True
-            elif patron=="venta" and balance*0.9>=2:
-                #self.set_apalancamiento("SHORT")
-                s+=self.open_short()
-                nueva=True
-            else:
-                s+=self.mantener(self.current_price)
-                #============================================
-        
-        s=f"[#] Analisis # {self.analisis}\n"
-        self.analisis+=1
-        s+=f"[#] OPERACION ACTUAL: {self.current_operation}\n"
-        s+=f"[#] GANANCIA ACTUAL: {self.ganancia}\n"
-        s+=f"[#] PRECIO BTC-USDT: {self.current_price}\n"
-        s+=f"[#] OPERACIONES: {self.cant_opr}\n"
-        s+=f"[#] GANADAS: {self.cant_opr_win}\n"
-        s+=f"[#] PERDIDAS: {self.cant_opr_over}\n"        
-        s+=f"SEÑAL: {patron}\n"
-        s+=f"[#] BALANCE: {balance} USDT\n"
-        s+="\n--------------------------------------\n"
-        if nueva == True and self.ENVIO_MAIL==True:
-            correo.enviar_correo(s,self.email)
-        return s
-
-
-    def identificar_patron(self,ohlcv_df,ventana):
         # Encontrar máximos y mínimos locales
         # Asegurarse de que la ventana rodante tenga exactamente 5 elementos antes de aplicar la función lambda
         maximos = ohlcv_df['high'].rolling(window=5, center=False).apply(
-            lambda x: x[ventana//2] if (len(x) == ventana and x[ventana//2] == x.max()) else np.nan, raw=True
+            lambda x: x[self.ventana//2] if (len(x) == self.ventana and x[self.ventana//2] == x.max()) else np.nan, raw=True
         )
         minimos = ohlcv_df['low'].rolling(window=5, center=False).apply(
-            lambda x: x[ventana//2] if (len(x) == ventana and x[ventana//2] == x.min()) else np.nan, raw=True
+            lambda x: x[self.ventana//2] if (len(x) == self.ventana and x[self.ventana//2] == x.min()) else np.nan, raw=True
         )
         # Últimos precios
         ultimo_maximo = maximos.last_valid_index()
@@ -189,70 +135,107 @@ class SwingTradingBot:
             return 'lateralizacion'  # No se encontraron patrones claros
 
 
+    
+    
+    #ESTRATEGIA LISTA
+    def trade(self):
+        patron=self.identificar_patron()
+        nueva=False
+        s=f"[#] Analisis # {self.analisis}\n"
+        self.analisis+=1
+        s+=f"[#] OPERACION ACTUAL: {self.current_operation}\n"
+        s+=f"[#] GANANCIA ACTUAL: {self.ganancia}\n"
+        s+=f"[#] PRECIO BTC-USDT: {self.current_price}\n"
+        
+        balance=7
+        
+        if self.current_operation == "LONG":
+            if patron in ["venta","lateralizacion"]:
+                s+=self.close_operations(self.current_price)
+                nueva=True
+            else:
+                s+=self.mantener(self.current_price)
+                #============================================
+        elif self.current_operation == "SHORT":
+            if patron in ["compra","lateralizacion"]:
+                s+=self.close_operations(self.current_price)
+                nueva=True
+            else:
+                s+=self.mantener(self.current_price)
+                #============================================
+
+                
+        if self.current_operation == None:
+            if patron=="compra" and balance*0.9>=2:
+                s+=self.open_long()
+                nueva=True
+            elif patron=="venta" and balance*0.9>=2:
+                s+=self.open_short()
+                nueva=True
+            else:
+                s+=self.mantener(self.current_price)
+                #============================================
+        
+        s+=f"[#] BALANCE: {balance} USDT\n"
+        s+="\n--------------------------------------\n"
+        if nueva == True and self.ENVIO_MAIL==True:
+            enviar_correo(s)
+        return s
+
+
     def close_operations(self,current_price):
         if self.Operar:
             self.close()
-        self.cant_opr+=1
         s=""
         s+=f">>>> CERRANDO POSICION {self.current_operation}\n"
-        estado=0
         if self.current_operation == "LONG":
-            estado=current_price - self.open_price
-            self.ganancia+=estado
+            self.ganancia+=current_price - self.open_price
+            s+=f"[#] ESTADO: {current_price - self.open_price}\n"
         else:
-            estado=self.open_price - current_price
-            self.ganancia+=estado
-        s+=f"[#] ESTADO: {estado}\n"
+            self.ganancia+=self.open_price - current_price
+            s+=f"[#] ESTADO: {self.open_price - current_price}\n"
         s+=f"[#] GANANCIA: {self.ganancia}\n"
-        if estado>0:
-            self.cant_opr_win+=1
-        else:
-            self.cant_opr_over+=1
         self.open_price=None
         self.current_operation=None
         self.save_state()
         return s
-
 
     #LISTO
     def mantener(self,current_price,s=""):
         s=""
         if self.current_operation != None:
             s+=f">>>> MANTENER OPERACION {self.current_operation} a {self.open_price}\n"
-            estado=0
+            s+="[#] ESTADO: "
             if self.current_operation == "LONG":
-                estado=current_price - self.open_price
-                self.ganancia+=estado
+                s+=str(current_price-self.open_price)+"\n"
             else:
-                estado=self.open_price - current_price
-                self.ganancia+=estado
-            s+=f"[#] ESTADO: {estado}"
+                s+=str(self.open_price-current_price)+"\n"
         else:
             s+="[#] NO EJECUTAR ACCION\n"
         return s
 
-
-
     #LISTO
-    def open_long(self):
-        s=""
-        if self.Operar:
-            self.open("LONG")
+    def open_long(self,s=""):
         self.open_price=self.current_price
-        s+=f">>>> ABRIENDO POSICION LONG A {self.open_price}\n"
-        self.current_operation="LONG"
-        self.save_state()
+        s=""
+        if self.open_price == None:
+            s+=f">>>> Error al abrir posicion en long:\n"
+        else:
+            s+=f">>>> ABRIENDO POSICION LONG A {self.open_price}\n"
+            self.current_operation="LONG"
+            self.save_state()
         return s
 
     #LISTO
-    def open_short(self):
-        s=""
-        if self.Operar:
-            self.open("SHORT")
+    def open_short(self,s=""):
         self.open_price=self.current_price
-        s+=f">>>> ABRIENDO POSICION SHORT A {self.open_price}\n"
-        self.current_operation="SHORT"
-        self.save_state()
+        s=""
+        if self.open_price == None:
+            s+=f">>>> Error al abrir posicion en short:\n"
+        else:
+            s+=f">>>> ABRIENDO POSICION SHORT A {self.open_price}\n"
+            self.current_operation="SHORT"
+            self.save_state()
         return s
 
     #LISTO
@@ -319,15 +302,15 @@ def run_bot():
     # Iniciar el bot
     while True:
         error=False
-        #try:
-        print("\nPROCESANDO ANALISIS...")
-        s=bot.trade()
-        clear_console()
-        print(s)
-        #except Exception as e:
-        #    clear_console()
-        #    print(f"Error: {str(e)}\n")
-        #    error=True
+        try:
+            print("\nPROCESANDO ANALISIS...")
+            s=bot.trade()
+            clear_console()
+            print(s)
+        except Exception as e:
+            clear_console()
+            print(f"Error: {str(e)}\n")
+            error=True
         print("Esperando para el próximo análisis...")
         if error:
             tiempo_espera=1
