@@ -54,6 +54,7 @@ class SwingTradingBot:
         self.email="liranzaelias@gmail.com"
         self.size=200
         self.ventana=5
+        self.temporalidad="1min"
 
         self.client=RequestsClient(access_id=access_id,secret_key=secret_key)
         self.apalancamiento=apalancamiento
@@ -96,7 +97,7 @@ class SwingTradingBot:
         return ohlcv_df
 
     def identificar_patron(self):
-        ohlcv_df=self.get_data(self.size,self.ventana)
+        ohlcv_df=self.get_data(self.size,self.temporalidad)
 
         # Encontrar máximos y mínimos locales
         # Asegurarse de que la ventana rodante tenga exactamente 5 elementos antes de aplicar la función lambda
@@ -295,8 +296,6 @@ def run_bot():
         bot = SwingTradingBot(apalancamiento)
     else:
         bot.apalancamiento=apalancamiento
-        bot.set_apalancamiento("LONG")
-        bot.set_apalancamiento("SHORT")
     clear_console()
     
     # Iniciar el bot
@@ -315,7 +314,7 @@ def run_bot():
         if error:
             tiempo_espera=1
         else:
-            tiempo_espera=1
+            tiempo_espera=5
         for i in range(tiempo_espera, 0, -1):
             sys.stdout.write("\rTiempo restante: {:02d}:{:02d} ".format(i // 60, i % 60))
             sys.stdout.flush()
