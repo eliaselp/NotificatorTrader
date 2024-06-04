@@ -78,7 +78,8 @@ class SwingTradingBot:
     def calculate_sma(self, periods):
         ohlcv_df = self.get_data()
         # Eliminar la última fila para no incluir el precio actual en el cálculo de la SMA
-        ohlcv_df = ohlcv_df[:-1]
+        #ohlcv_df = ohlcv_df[:-1]
+        ohlcv_df = ohlcv_df.drop(df.index[-1])
         sma_values = {}
         for period in periods:
             sma_values[f'SMA_{period}'] = ohlcv_df['close'].rolling(window=period).mean().iloc[-1]
