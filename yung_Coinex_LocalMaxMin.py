@@ -168,7 +168,7 @@ class SwingTradingBot:
         if self.Operar:
             self.close()
         s=""
-        s+=f">>>> CERRANDO POSICION {self.current_operation}\n"
+        s+=f"[++++] CERRANDO POSICION {self.current_operation}\n"
         if self.current_operation == "LONG":
             self.ganancia+=current_price - self.open_price
             s+=f"[#] ESTADO: {current_price - self.open_price}\n"
@@ -193,7 +193,7 @@ class SwingTradingBot:
     def mantener(self,current_price,s=""):
         s=""
         if self.current_operation != None:
-            s+=f">>>> MANTENER OPERACION {self.current_operation} a {self.open_price}\n"
+            s+=f"[++++] MANTENER OPERACION {self.current_operation} a {self.open_price}\n"
             s+="[#] ESTADO: "
             if self.current_operation == "LONG":
                 s+=str(current_price-self.open_price)+"\n"
@@ -208,9 +208,9 @@ class SwingTradingBot:
         self.open_price=self.current_price
         s=""
         if self.open_price == None:
-            s+=f">>>> Error al abrir posicion en long:\n"
+            s+=f"[++++] Error al abrir posicion en long:\n"
         else:
-            s+=f">>>> ABRIENDO POSICION LONG A {self.open_price}\n"
+            s+=f"[++++] ABRIENDO POSICION LONG A {self.open_price}\n"
             self.current_operation="LONG"
             self.save_state()
         return s
@@ -220,9 +220,9 @@ class SwingTradingBot:
         self.open_price=self.current_price
         s=""
         if self.open_price == None:
-            s+=f">>>> Error al abrir posicion en short:\n"
+            s+=f"[++++] Error al abrir posicion en short:\n"
         else:
-            s+=f">>>> ABRIENDO POSICION SHORT A {self.open_price}\n"
+            s+=f"[++++] ABRIENDO POSICION SHORT A {self.open_price}\n"
             self.current_operation="SHORT"
             self.save_state()
         return s
