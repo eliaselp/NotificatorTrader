@@ -74,6 +74,27 @@ class SwingTradingBot:
         self.current_price = ohlcv_df['close'].iloc[-1]
         return ohlcv_df
 
+
+    def calculate_sma(self, periods):
+        ohlcv_df = self.get_data()
+        # Eliminar la última fila para no incluir el precio actual en el cálculo de la SMA
+        ohlcv_df = ohlcv_df[:-1]
+        sma_values = {}
+        for period in periods:
+            sma_values[f'SMA_{period}'] = ohlcv_df['close'].rolling(window=period).mean().iloc[-1]
+        return sma_values
+    
+    def identificar_tendencia(self):
+        sma=self.calculate_sma([5,20,25])
+        if sma['SMA_5'] > sma['SMA_20'] and sma['SMA_20'] > sma['SMA_25']:
+            return 'compra'
+        if sma['SMA_5'] < sma['SMA_20'] and sma['SMA_20'] < sma['SMA_25']:
+            return 'venta'
+        return 'lateralizacion'
+
+
+
+
     def identificar_patron(self):
         ohlcv_df=self.get_data()
         # Encontrar máximos y mínimos locales
@@ -117,7 +138,12 @@ class SwingTradingBot:
     
     #ESTRATEGIA LISTA
     def trade(self):
-        patron=self.identificar_patron()
+        patron=''
+        if config.estrategia==1:
+            patron=self.identificar_patron()
+        elif config.estrategia==2:
+            patron=self.identificar_tendencia()
+
         nueva=False
         s=f"[#] Analisis # {self.analisis}\n"
         self.analisis+=1
@@ -126,7 +152,6 @@ class SwingTradingBot:
         s+=f"[#] PRECIO BTC-USDT: {self.current_price}\n"
         s+=f"[#] PATRON: {patron}\n"
         balance=7
-        
         if self.current_operation == "LONG":
             if patron in ["venta","lateralizacion"]:
                 s+=self.close_operations(self.current_price)
@@ -291,15 +316,15 @@ def run_bot():
     # Iniciar el bot
     while True:
         error=False
-        #try:
-        print("\nPROCESANDO ANALISIS...")
-        s=bot.trade()
-        clear_console()
-        print(s)
-        #except Exception as e:
-        #    clear_console()
-        #    print(f"Error: {str(e)}\n")
-        #    error=True
+        try:
+            print("\nPROCESANDO ANALISIS...")
+            s=bot.trade()
+            clear_console()
+            print(s)
+        except Exception as e:
+            clear_console()
+            print(f"Error: {str(e)}\n")
+            error=True
         print("Esperando para el próximo análisis...")
         if error:
             tiempo_espera=1
