@@ -10,3 +10,10 @@ size=30
 ventana=5
 temporalidad="5min"
 tiempo_espera=10 #segundos
+
+
+
+#ESTRATEGIA
+#1: RECONOCIMIENTO DE PATRONES
+#2: MEDIAS SIMPLES 5, 20, 25
+estrategia=2
