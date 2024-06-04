@@ -24,8 +24,8 @@ def clear_console():
 class SwingTradingBot:
     def __init__(self,apalancamiento):
         #CONFIG
-        access_id = config.access_id
-        secret_key = config.secret_key
+        self.access_id = config.access_id
+        self.secret_key = config.secret_key
         self.ENVIO_MAIL= config.ENVIO_MAIL
         self.Operar= config.Operar
         self.email=config.email
@@ -34,7 +34,7 @@ class SwingTradingBot:
         self.temporalidad=config.temporalidad
         self.ventana=config.ventana
 
-        self.client=RequestsClient(access_id=access_id,secret_key=secret_key)
+        self.client=RequestsClient(access_id=self.access_id,secret_key=self.secret_key)
         self.apalancamiento=apalancamiento
         self.last_apalancamiento=None
         self.ganancia=0
@@ -88,10 +88,10 @@ class SwingTradingBot:
     def identificar_tendencia(self):
         sma=self.calculate_sma([5,20,25])
         if sma['SMA_5'] > sma['SMA_20'] and sma['SMA_20'] > sma['SMA_25']:
-            return 'compra'
+            return 'compra',sma
         if sma['SMA_5'] < sma['SMA_20'] and sma['SMA_20'] < sma['SMA_25']:
-            return 'venta'
-        return 'lateralizacion'
+            return 'venta',sma
+        return 'lateralizacion',sma
 
 
 
@@ -140,10 +140,11 @@ class SwingTradingBot:
     #ESTRATEGIA LISTA
     def trade(self):
         patron=''
+        sma=None
         if config.estrategia==1:
             patron=self.identificar_patron()
         elif config.estrategia==2:
-            patron=self.identificar_tendencia()
+            patron,sma=self.identificar_tendencia()
 
         nueva=False
         s=f"[#] Analisis # {self.analisis}\n"
@@ -179,7 +180,9 @@ class SwingTradingBot:
             else:
                 s+=self.mantener(self.current_price)
                 #============================================
-        
+        if sma:
+            sma=dict(sorted(sma.items(), key=lambda item: item[1], reverse=True))
+            s+=str(pd.DataFrame([sma]))+"\n"
         s+=f"[#] BALANCE: {balance} USDT\n"
         s+=f"[#] OPERACIONES: {self.cant_opr}\n"
         s+=f"[#] GANADAS: {self.cant_win}\n"
@@ -312,6 +315,17 @@ def run_bot():
         bot = SwingTradingBot(apalancamiento)
     else:
         bot.apalancamiento=apalancamiento
+        bot.access_id = config.access_id
+        bot.secret_key = config.secret_key
+        bot.ENVIO_MAIL= config.ENVIO_MAIL
+        bot.Operar= config.Operar
+        bot.email=config.email
+        bot.simbol=config.simbol
+        bot.size=config.size
+        bot.temporalidad=config.temporalidad
+        bot.ventana=config.ventana
+        bot.save_state()
+
     clear_console()
     
     # Iniciar el bot
