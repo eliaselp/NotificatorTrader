@@ -212,6 +212,7 @@ class SwingTradingBot:
         else:
             s+=f"[++++] ABRIENDO POSICION LONG A {self.open_price}\n"
             self.current_operation="LONG"
+            self.cant_opr+=1
             self.save_state()
         return s
 
@@ -224,6 +225,7 @@ class SwingTradingBot:
         else:
             s+=f"[++++] ABRIENDO POSICION SHORT A {self.open_price}\n"
             self.current_operation="SHORT"
+            self.cant_opr+=1
             self.save_state()
         return s
 
