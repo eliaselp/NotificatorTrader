@@ -72,14 +72,13 @@ class SwingTradingBot:
         ohlcv_df['open'] = pd.to_numeric(ohlcv_df['open'])
         ohlcv_df['volume'] = pd.to_numeric(ohlcv_df['volume'])
         self.current_price = ohlcv_df['close'].iloc[-1]
+        if config.incluir_precio_actual==False:
+            ohlcv_df = ohlcv_df.drop(ohlcv_df.index[-1])
         return ohlcv_df
 
 
     def calculate_sma(self, periods):
         ohlcv_df = self.get_data()
-        # Eliminar la última fila para no incluir el precio actual en el cálculo de la SMA
-        #ohlcv_df = ohlcv_df[:-1]
-        ohlcv_df = ohlcv_df.drop(ohlcv_df.index[-1])
         sma_values = {}
         for period in periods:
             sma_values[f'SMA_{period}'] = ohlcv_df['close'].rolling(window=period).mean().iloc[-1]
