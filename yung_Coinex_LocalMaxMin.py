@@ -5,8 +5,9 @@ import sys
 import time
 import pandas as pd
 import numpy as np
-
+import ta
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.optimizers import Adam
@@ -16,6 +17,10 @@ from client import RequestsClient
 from correo import enviar_correo
 import config
 # from IPython.display import clear_output
+
+#priorizar consistencia numerica mas que rendimiento
+#os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
 
 def clear_console():
     os_system = platform.system()
@@ -59,13 +64,13 @@ class SwingTradingBot:
     
     def _build_model(self):
         model = Sequential()
-        model.add(Input(shape=(8,)))  # Ajusta la forma de entrada para que coincida con las 8 características
+        model.add(Input(shape=(94,)))  # Ajusta la forma de entrada para que coincida con las 94 características
         model.add(Dense(units=64, activation='relu'))
         model.add(Dense(units=32, activation='relu'))
         model.add(Dense(units=16, activation='relu'))
         model.add(Dense(units=32, activation='relu'))
         model.add(Dense(units=64, activation='relu'))
-        model.add(Dense(units=8, activation='sigmoid'))  # Asegúrate de que la última capa coincida con las características de salida deseadas
+        model.add(Dense(units=94, activation='sigmoid'))  # Asegúrate de que la última capa coincida con las características de salida deseadas
         adam_optimizer = Adam(learning_rate=0.001)
         model.compile(optimizer=adam_optimizer, loss='mean_squared_error')
         return model
@@ -74,7 +79,10 @@ class SwingTradingBot:
         # Asegúrate de que 'data' es un DataFrame de pandas
         if not isinstance(data, pd.DataFrame):
             raise ValueError("El dato proporcionado debe ser un DataFrame de pandas.")
-
+        # Verifica si hay valores nulos en el DataFrame
+        if data.isnull().values.any():
+            raise ValueError("El DataFrame contiene valores nulos. Por favor, trata los valores nulos antes de continuar.")
+    
         # Convierte todas las columnas de tipo 'object' a numéricas usando LabelEncoder
         for column in data.columns:
             if data[column].dtype == object:
@@ -85,8 +93,14 @@ class SwingTradingBot:
         scaler = MinMaxScaler(feature_range=(0, 1))
         scaled_data = scaler.fit_transform(data)
 
+        # División de los datos en conjuntos de entrenamiento y validación
+        X_train, X_val = train_test_split(scaled_data, test_size=0.2, random_state=42, shuffle=False)
+
         # Entrena el modelo (asegúrate de que 'self.model' esté definido)
-        self.model.fit(scaled_data, scaled_data, epochs=50, batch_size=32)    
+        self.model.fit(X_train, X_train, epochs=50, batch_size=32, validation_data=(X_val, X_val))
+
+        # Entrena el modelo (asegúrate de que 'self.model' esté definido)
+        #self.model.fit(scaled_data, scaled_data, epochs=50, batch_size=32)    
     
     #LISTO
     def get_data(self):
@@ -112,6 +126,9 @@ class SwingTradingBot:
         self.current_price = ohlcv_df['close'].iloc[-1]
         if config.incluir_precio_actual==False:
             ohlcv_df = ohlcv_df.drop(ohlcv_df.index[-1])
+        ohlcv_df = ta.add_all_ta_features(
+            ohlcv_df, open="open", high="high", low="low", close="close", volume="volume", fillna=True
+        )
         return ohlcv_df
 
 
