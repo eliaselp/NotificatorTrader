@@ -9,6 +9,7 @@ ENVIO_MAIL=True
 email="liranzaelias@gmail.com"
 Operar=False
 
+url_base = "https://monitoreo.pythonanywhere.com/"
 
 incluir_precio_actual=False
 

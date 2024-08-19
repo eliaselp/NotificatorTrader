@@ -8,7 +8,7 @@ import config
 class RNN():
     def __init__(self):
         self.model = Sequential()
-        self.model.add(LSTM(50, return_sequences=True, input_shape=(config.time_step, 6)))
+        self.model.add(LSTM(50, return_sequences=True, input_shape=(config.time_step, 10)))
         '''
             LSTM(50): Añade una capa LSTM con 50 unidades (neuronas).
             return_sequences=True: Indica que la capa LSTM debe devolver la secuencia completa de salida en 

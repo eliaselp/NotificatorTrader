@@ -5,11 +5,12 @@ import sys
 import time
 import pandas as pd
 import numpy as np
-import ta
+import pandas_ta as ta
 
 from client import RequestsClient
 from RedNeuronalRecurrente import RNN
 from correo import enviar_correo
+from monitor import update_text_code,post_action
 import config
 
 # from IPython.display import clear_output
@@ -26,6 +27,7 @@ def clear_console():
 # Clase del bot de trading
 class SwingTradingBot:
     def __init__(self,apalancamiento):
+        self.nuevo = True
         self.last_data=None#Esto es para que controlar el momento de entrenamiento del modelo        
         self.ganancia=0
         self.current_operation=None
@@ -48,7 +50,10 @@ class SwingTradingBot:
     def predecir(self, data):
         if str(data)!=self.last_data:
             self.last_data=str(data)
-            data = data.iloc[config.time_step-20:,:]
+            if self.nuevo == False:
+                data = data.iloc[data.shape[0]-config.time_step-config.predict_step-3:,:]
+            else:
+                self.nuevo = False
             scaled_data=RNN.process_data(data)
             X_train,X_test,y_train,y_test,y_no_scaled=RNN.train_test_split(scaled_data,data,porciento_train=0.8)
             self.modelo.train(X_train=X_train,y_train=y_train)
@@ -60,10 +65,11 @@ class SwingTradingBot:
             self.last_prediccion=predictions[0, 0]
             self.last_loss=loss
             predictions=predictions[0, 0]
-            if predictions > data.iloc[-1,0]:
+            
+            if predictions > data.iloc[-1,0] and data.iloc[-1]['EMAF'] > data.iloc[-1]['EMAM']:
                 self.last_patron="LONG"
                 return "LONG",loss,predictions
-            elif predictions < data.iloc[-1,0]:
+            elif predictions < data.iloc[-1,0] and data.iloc[-1]['EMAF'] < data.iloc[-1]['EMAM']:
                 self.last_patron="SHORT"
                 return "SHORT",loss,predictions
             else:
@@ -155,6 +161,8 @@ class SwingTradingBot:
         self.open_price=None
         self.current_operation=None
         self.save_state()
+        
+        post_action(self.ganancia,self.analisis)
         return s
 
     #LISTO
@@ -225,9 +233,17 @@ class SwingTradingBot:
         ohlcv_df = ohlcv_df.drop('created_at', axis=1)
         if config.incluir_precio_actual==False:
             ohlcv_df = ohlcv_df.drop(ohlcv_df.index[-1])
-        '''ohlcv_df = ta.add_all_ta_features(
+        ohlcv_df['RSI'] = ta.rsi(ohlcv_df['close'],length=15)
+        ohlcv_df['EMAF'] = ta.ema(ohlcv_df['close'],length=7)
+        ohlcv_df['EMAM'] = ta.ema(ohlcv_df['close'],length=50)
+        ohlcv_df['EMAS'] = ta.ema(ohlcv_df['close'],length=100)
+        ohlcv_df = ohlcv_df.iloc[100:,:]
+        
+        '''
+        ohlcv_df = ta.add_all_ta_features(
             ohlcv_df, open="open", high="high", low="low", close="close", volume="volume", fillna=True
-        )'''
+        )
+        '''
         return ohlcv_df
 
 
@@ -299,6 +315,7 @@ def run_bot():
             print("\nPROCESANDO ANALISIS...")
             s=bot.trade()
             clear_console()
+            update_text_code(mensaje=s)
             print(s)
         except Exception as e:
             clear_console()
