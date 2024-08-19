@@ -26,7 +26,7 @@ def clear_console():
 
 # Clase del bot de trading
 class SwingTradingBot:
-    def __init__(self,apalancamiento):
+    def __init__(self):
         self.nuevo = True
         self.last_data=None#Esto es para que controlar el momento de entrenamiento del modelo        
         self.ganancia=0
@@ -263,48 +263,9 @@ class SwingTradingBot:
 
 
 def run_bot():
-    # Intentar recuperar el estado del bot
-    print("[#] Seleccione nivel de apalancamiento: ")
-    print("[0] 1x")
-    print("[1] 10x")
-    print("[2] 20x")
-    print("[3] 30x")
-    print("[4] 40x")
-    print("[5] 50x")
-    print("[6] 60x")
-    print("[7] 70x")
-    print("[8] 80x")
-    print("[9] 90x")
-    print("[10] 100x")
-    opc=int(input('==>>> '))
-    apalancamiento=1
-    if opc==1:
-        apalancamiento=10
-    elif opc==2:
-        apalancamiento=20
-    elif opc==3:
-        apalancamiento=30
-    elif opc==4:
-        apalancamiento=40
-    elif opc==5:
-        apalancamiento=50
-    elif opc==6:
-        apalancamiento=60
-    elif opc==7:
-        apalancamiento=70
-    elif opc==8:
-        apalancamiento=80
-    elif opc==9:
-        apalancamiento=90
-    elif opc==10:
-        apalancamiento=100
-
     bot = SwingTradingBot.load_state()
     if bot is None:
-        bot = SwingTradingBot(apalancamiento)
-    else:
-        bot.apalancamiento=apalancamiento
-        bot.save_state()
+        bot = SwingTradingBot()
 
     clear_console()
     
