@@ -50,7 +50,7 @@ class SwingTradingBot:
 
     def predecir(self, data):
         if str(data)!=self.last_data:
-            if self.analisis % config.reset_model == 0:
+            if self.cant_trainings % config.reset_model == 0:
                 self.modelo=RNN()
                 self.nuevo = True
                 self.cant_trainings = 0
