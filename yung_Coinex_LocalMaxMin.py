@@ -51,6 +51,7 @@ class SwingTradingBot:
         if str(data)!=self.last_data:
             if self.analisis % config.reset_model == 0:
                 self.modelo=RNN()
+                self.nuevo = True
 
             self.last_data=str(data)
             if self.nuevo == False:
