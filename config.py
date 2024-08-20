@@ -9,8 +9,8 @@ ENVIO_MAIL=True
 email="liranzaelias@gmail.com"
 Operar=False
 
-#url_base = "https://monitoreo.pythonanywhere.com/"
-url_base = "http://localhost:8000/"
+url_base = "https://monitoreo.pythonanywhere.com/"
+#url_base = "http://localhost:8000/"
 
 incluir_precio_actual=False
 
