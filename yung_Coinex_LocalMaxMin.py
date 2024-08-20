@@ -65,11 +65,11 @@ class SwingTradingBot:
             self.last_prediccion=predictions[0, 0]
             self.last_loss=loss
             predictions=predictions[0, 0]
-            
-            if predictions > data.iloc[-1,0] and data.iloc[-1]['EMAF'] > data.iloc[-1]['EMAS']:
+            #data.iloc[-1]['EMAF']
+            if predictions > data.iloc[-1,0]:
                 self.last_patron="LONG"
                 return "LONG",loss,predictions
-            elif predictions < data.iloc[-1,0] and data.iloc[-1]['EMAF'] < data.iloc[-1]['EMAS']:
+            elif predictions < data.iloc[-1,0]:
                 self.last_patron="SHORT"
                 return "SHORT",loss,predictions
             else:
