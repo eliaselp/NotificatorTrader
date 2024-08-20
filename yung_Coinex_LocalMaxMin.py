@@ -41,6 +41,7 @@ class SwingTradingBot:
         self.client=RequestsClient(access_id=config.access_id,secret_key=config.secret_key)
 
         self.modelo=RNN()
+        self.cant_trainings = 0
         self.error_cuadratico_medio=None
         self.last_prediccion=None
         self.last_loss=None
@@ -52,6 +53,7 @@ class SwingTradingBot:
             if self.analisis % config.reset_model == 0:
                 self.modelo=RNN()
                 self.nuevo = True
+                self.cant_trainings = 0
 
             self.last_data=str(data)
             if self.nuevo == False:
@@ -61,6 +63,7 @@ class SwingTradingBot:
             scaled_data=RNN.process_data(data)
             X_train,X_test,y_train,y_test,y_no_scaled=RNN.train_test_split(scaled_data,data,porciento_train=0.8)
             self.modelo.train(X_train=X_train,y_train=y_train)
+            self.cant_trainings += 1
             predictions,loss=self.modelo.prediccion(X_test=X_test,y_test=y_test,y_no_scaled=y_no_scaled)
             #---------------------------------------------------------------
             X_test=self.modelo.get_test_data(scaled_data[-config.time_step-config.predict_step-1:,:])
