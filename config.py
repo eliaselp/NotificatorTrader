@@ -9,7 +9,8 @@ ENVIO_MAIL=True
 email="liranzaelias@gmail.com"
 Operar=False
 
-url_base = "https://monitoreo.pythonanywhere.com/"
+#url_base = "https://monitoreo.pythonanywhere.com/"
+url_base = "http://localhost:8000/"
 
 incluir_precio_actual=False
 
@@ -25,3 +26,5 @@ epochs=1
 
 time_step=500
 predict_step=5
+
+reset_model = 100

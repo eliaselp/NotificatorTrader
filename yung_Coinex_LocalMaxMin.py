@@ -49,6 +49,9 @@ class SwingTradingBot:
 
     def predecir(self, data):
         if str(data)!=self.last_data:
+            if self.analisis % config.reset_model == 0:
+                self.modelo=RNN()
+
             self.last_data=str(data)
             if self.nuevo == False:
                 data = data.iloc[data.shape[0]-config.time_step-config.predict_step-3:,:]
@@ -65,7 +68,7 @@ class SwingTradingBot:
             self.last_prediccion=predictions[0, 0]
             self.last_loss=loss
             predictions=predictions[0, 0]
-            #data.iloc[-1]['EMAF']
+            
             if predictions > data.iloc[-1,0]:
                 self.last_patron="LONG"
                 return "LONG",loss,predictions
