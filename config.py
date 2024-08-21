@@ -16,7 +16,7 @@ incluir_precio_actual=False
 
 
 size=1000
-temporalidad="1min"
+temporalidad="1hour"
 tiempo_espera=10 #segundos
 
 
@@ -27,4 +27,4 @@ epochs=1
 time_step=500
 predict_step=5
 
-reset_model = 100
+reset_model = 10
