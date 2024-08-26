@@ -98,6 +98,7 @@ class SwingTradingBot:
         #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
         nueva=False
+        s=f"[#] Entrenamiento # {self.cant_trainings}\n"
         s=f"[#] Analisis # {self.analisis}\n"
         self.analisis+=1
         s+=f"[#] OPERACION ACTUAL: {self.current_operation}\n"
