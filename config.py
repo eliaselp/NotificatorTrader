@@ -1,8 +1,8 @@
 
 
 ####CONFIGURACION####
-access_id = "2BB2CDB4E9034D5C9EBB04041EBE5089"  # Replace with your access id
-secret_key = "CA2792E400D023DAD732CA41C4ED0B98B0CC638FF77D9C65"  # Replace with your secret key
+access_id = "CA67B0440BB547499F0BF8A632741AF0"  # Replace with your access id
+secret_key = "5BBFB51795FDCFB32777F34F113720EC9C2598905DBD679F"  # Replace with your secret key
 simbol="BTCUSDT"
 
 ENVIO_MAIL=True
